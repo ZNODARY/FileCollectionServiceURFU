@@ -42,6 +42,20 @@ class EventParticipant(Base):
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
     role = Column(String(50), nullable=False)
     joined_at = Column(DateTime, default=utc_now)
-    
+
     event = relationship("Event", foreign_keys=[event_id])
     user = relationship("User", foreign_keys=[user_id])
+
+class Work(Base):
+    __tablename__ = "works"
+    
+    id = Column(Integer, primary_key=True)
+    event_id = Column(Integer, ForeignKey("events.id", ondelete="CASCADE"))
+    title = Column(String(200))
+    link = Column(String(500))
+    author_id = Column(Integer, ForeignKey("users.id"))
+    status = Column(String(50), default="pending")
+    created_at = Column(DateTime, default=utc_now)
+    
+    event = relationship("Event", foreign_keys=[event_id])
+    author = relationship("User", foreign_keys=[author_id])
