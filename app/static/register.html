@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Регистрация</title>
+    <style>
+        body { font-family: Arial; max-width: 400px; margin: 50px auto; padding: 20px; }
+        input { width: 100%; padding: 8px; margin: 5px 0; }
+        button { width: 100%; padding: 10px; background: green; color: white; border: none; cursor: pointer; }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+    <h2>Регистрация</h2>
+    <form id="registerForm">
+        <input type="text" id="full_name" placeholder="Полное имя" required>
+        <input type="email" id="email" placeholder="Email" required>
+        <input type="password" id="password" placeholder="Пароль" required>
+        <div id="error" class="error"></div>
+        <button type="submit">Зарегистрироваться</button>
+    </form>
+    <p><a href="/login.html">Уже есть аккаунт? Войти</a></p>
+    <script>
+        document.getElementById('registerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const res = await fetch('/api/auth/register', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    full_name: document.getElementById('full_name').value,
+                    email: document.getElementById('email').value,
+                    password: document.getElementById('password').value
+                })
+            });
+            if (res.ok) window.location.href = '/dashboard.html';
+            else {
+                const data = await res.json();
+                document.getElementById('error').textContent = data.detail || 'Ошибка регистрации';
+            }
+        });
+    </script>
+</body>
+</html>

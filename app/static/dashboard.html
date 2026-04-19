@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Дашборд</title>
+    <style>
+        body { font-family: Arial; max-width: 800px; margin: 50px auto; padding: 20px; }
+        nav a { display: inline-block; margin: 10px; padding: 10px; background: #f0f0f0; text-decoration: none; color: black; }
+        .logout { background: red; color: white; }
+    </style>
+</head>
+<body>
+    <h2>Дашборд</h2>
+    <div id="userInfo"></div>
+    <nav>
+        <a href="#" id="logoutBtn" class="logout">Выйти</a>
+    </nav>
+    <script>
+        async function loadUser() {
+            const res = await fetch('/api/auth/me');
+            const user = await res.json();
+            if (!user.authenticated) window.location.href = '/login.html';
+            document.getElementById('userInfo').innerHTML = `<p>Привет, ${user.full_name || user.email} (${user.role})</p>`;
+        }
+        document.getElementById('logoutBtn').addEventListener('click', async (e) => {
+            e.preventDefault();
+            await fetch('/api/auth/logout', {method: 'POST'});
+            window.location.href = '/login.html';
+        });
+        loadUser();
+    </script>
+</body>
+</html>
