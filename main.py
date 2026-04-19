@@ -1,5 +1,6 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
+from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
@@ -12,13 +13,14 @@ config = load_config()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    print("Start application")
     init_db()
-    print("Database initialized")
     yield
-    print("Shutting down...")
 
 app = FastAPI(title="Review Service API", lifespan=lifespan)
+
+@app.get("/")
+async def root():
+    return RedirectResponse(url="login.html")
 
 app.add_middleware(SessionMiddleware, secret_key=config.secret_key)
 app.add_middleware(
