@@ -1,6 +1,5 @@
 from fastapi import APIRouter, Request, HTTPException
 from pydantic import BaseModel
-from typing import List, Optional
 
 from app.database.base import get_session
 from app.services.work import create_work, get_user_works

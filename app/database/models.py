@@ -31,6 +31,8 @@ class Event(Base):
     started_at = Column(DateTime, nullable=True)
     finished_at = Column(DateTime, nullable=True)
     
+    peer_review_count = Column(Integer, default=2)
+    
     creator = relationship("User", foreign_keys=[created_by])
 
 class EventParticipant(Base):
@@ -42,7 +44,7 @@ class EventParticipant(Base):
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
     role = Column(String(50), nullable=False)
     joined_at = Column(DateTime, default=utc_now)
-
+    
     event = relationship("Event", foreign_keys=[event_id])
     user = relationship("User", foreign_keys=[user_id])
 

@@ -18,8 +18,6 @@ document.querySelectorAll('.sidebar-menu__item').forEach(item => {
     };
 });
 
-
-// Выпадающее меню профиля
 const profileBtn = document.getElementById('profileBtn');
 const profileDropdown = document.getElementById('profileDropdown');
 const profileArrow = document.querySelector('.sidebar-profile__arrow');
@@ -34,7 +32,6 @@ if (profileBtn) {
     };
 }
 
-// Закрыть dropdown при клике вне его
 document.addEventListener('click', (e) => {
     if (profileDropdown && profileBtn && !profileBtn.contains(e.target) && !profileDropdown.contains(e.target)) {
         profileDropdown.classList.remove('show');
@@ -44,13 +41,25 @@ document.addEventListener('click', (e) => {
     }
 });
 
-// Выход
 const logoutBtn = document.getElementById('logoutBtn');
 if (logoutBtn) {
     logoutBtn.onclick = async () => {
         await fetch('/api/auth/logout', { method: 'POST' });
         window.location.href = '/login.html';
     };
+}
+
+const eventTypeSelect = document.getElementById('eventType');
+const peerCountBlock = document.getElementById('peerCountBlock');
+
+if (eventTypeSelect && peerCountBlock) {
+    eventTypeSelect.addEventListener('change', function() {
+        if (this.value === 'peer') {
+            peerCountBlock.style.display = 'block';
+        } else {
+            peerCountBlock.style.display = 'none';
+        }
+    });
 }
 
 async function loadEvents() {
@@ -65,14 +74,30 @@ async function loadEvents() {
         container.innerHTML = '<p class="events-board__placeholder">Нет мероприятий. Создайте первое!</p>';
         return;
     }
-    container.innerHTML = events.map(e => `
-        <div style="border: 1px solid #D479F5; border-radius: 10px; padding: 20px; margin-bottom: 15px;">
-            <strong style="font-size: 24px;">${e.title}</strong><br>
-            <span>Тип: ${e.event_type}</span><br>
-            <span>Статус: ${e.status}</span><br>
-            <small>Создано: ${new Date(e.created_at).toLocaleDateString()}</small>
-        </div>
-    `).join('');
+    container.innerHTML = events.map(e => {
+        let typeText = '';
+        if (e.event_type === 'expert') typeText = 'Экспертная проверка';
+        else if (e.event_type === 'peer') typeText = 'P2P проверка';
+        else typeText = 'Конкурсное голосование';
+        
+        let statusText = '';
+        if (e.status === 'draft') statusText = 'Черновик';
+        else if (e.status === 'active') statusText = 'Активен';
+        else statusText = 'Завершён';
+        
+        const date = new Date(e.created_at);
+        const dateStr = date.toLocaleDateString('ru-RU');
+        const timeStr = date.toLocaleTimeString('ru-RU', {hour: '2-digit', minute: '2-digit'});
+        
+        return `
+            <div class="event-card">
+                <div class="event-title">${e.title}</div>
+                <div class="event-type">Тип: ${typeText}</div>
+                <div class="event-status">Статус: ${statusText}</div>
+                <div class="event-created">Создано: ${dateStr} в ${timeStr}</div>
+            </div>
+        `;
+    }).join('');
 }
 
 async function loadEventsForSelect() {
@@ -144,20 +169,29 @@ window.onclick = (e) => { if (e.target === modal) modal.style.display = 'none'; 
 
 document.getElementById('createEventForm').onsubmit = async (e) => {
     e.preventDefault();
+    
+    const requestBody = {
+        title: document.getElementById('title').value,
+        description: document.getElementById('description').value,
+        event_type: document.getElementById('eventType').value,
+        criteria: [],
+        review_timeout_hours: parseInt(document.getElementById('timeout').value) || 48
+    };
+    
+    if (document.getElementById('eventType').value === 'peer') {
+        requestBody.peer_review_count = parseInt(document.getElementById('peerCount').value) || 2;
+    }
+    
     const res = await fetch('/api/events/', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({
-            title: document.getElementById('title').value,
-            description: document.getElementById('description').value,
-            event_type: document.getElementById('eventType').value,
-            criteria: [],
-            review_timeout_hours: parseInt(document.getElementById('timeout').value) || 48
-        })
+        body: JSON.stringify(requestBody)
     });
+    
     if (res.ok) {
         modal.style.display = 'none';
         document.getElementById('createEventForm').reset();
+        if (peerCountBlock) peerCountBlock.style.display = 'none';
         loadEvents();
         alert('Мероприятие создано!');
     } else {
