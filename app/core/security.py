@@ -1,12 +1,16 @@
 import hashlib
-from passlib.context import CryptContext
+import argon2
 
-pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
+ph = argon2.PasswordHasher()
 
 def hash_password(password: str) -> str:
     hashed = hashlib.sha256(password.encode()).hexdigest()
-    return pwd_context.hash(hashed)
+    return ph.hash(hashed)
 
 def verify_password(plain: str, hashed: str) -> bool:
     hashed_plain = hashlib.sha256(plain.encode()).hexdigest()
-    return pwd_context.verify(hashed_plain, hashed)
+    try:
+        ph.verify(hashed, hashed_plain)
+        return True
+    except argon2.exceptions.VerifyMismatchError:
+        return False

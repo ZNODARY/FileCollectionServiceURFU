@@ -16,7 +16,6 @@ class LoginRequest(BaseModel):
     email: str
     password: str
 
-
 @router.post("/register")
 def register(data: RegisterRequest, request: Request):
     session = get_session()
@@ -38,7 +37,6 @@ def register(data: RegisterRequest, request: Request):
     
     return {"message": "Registered successfully", "user_id": user.id}
 
-
 @router.post("/login")
 def login(data: LoginRequest, request: Request):
     session = get_session()
@@ -48,19 +46,17 @@ def login(data: LoginRequest, request: Request):
     if not user:
         raise HTTPException(status_code=401, detail="Invalid credentials")
     
-    if not verify_password(data.password, user.hashed_password): # type: ignore
+    if not verify_password(data.password, user.hashed_password):  # type: ignore
         raise HTTPException(status_code=401, detail="Invalid credentials")
     
     request.session["user_id"] = user.id
     
     return {"message": "Logged in", "user_id": user.id, "role": user.role}
 
-
 @router.post("/logout")
 def logout(request: Request):
     request.session.clear()
     return {"message": "Logged out"}
-
 
 @router.get("/me")
 def me(request: Request):

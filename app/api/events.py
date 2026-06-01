@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Request, HTTPException
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import Optional
 
 from app.database.base import get_session
 from app.services.event import create_event, get_user_events
@@ -11,7 +11,7 @@ class CreateEventRequest(BaseModel):
     title: str
     description: Optional[str] = None
     event_type: str
-    criteria: List[dict] = []
+    criteria: list = []
     review_timeout_hours: int = 48
 
 @router.post("/")
