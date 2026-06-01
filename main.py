@@ -7,7 +7,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from app.config import load_config
 from app.database.base import init_db
-from app.api import auth_router, events_router
+from app.api import auth_router, events_router, works_router, reviews_router
 from app.api.works import router as works_router
 
 config = load_config()
@@ -33,3 +33,4 @@ app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
 app.include_router(events_router, prefix="/api/events", tags=["events"])
 app.include_router(works_router, prefix="/api/works", tags=["works"])
 app.mount("/", StaticFiles(directory="app/static", html=True), name="static")
+app.include_router(reviews_router, prefix="/api/reviews", tags=["reviews"])

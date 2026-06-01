@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from app.database.models import Event, EventParticipant
+from app.database.models import Event, EventParticipant, Review  # ← добавить Review
 
 def create_event(session: Session, title: str, description: str | None, event_type: str, criteria: list, review_timeout_hours: int, created_by: int):
     event = Event(
@@ -32,3 +32,10 @@ def get_user_events(session: Session, user_id: int):
 
 def get_event_by_id(session: Session, event_id: int):
     return session.query(Event).filter(Event.id == event_id).first()
+
+def get_assigned_works(session: Session, reviewer_id: int):
+    reviews = session.query(Review).filter(
+        Review.reviewer_id == reviewer_id,
+        Review.status == "assigned"
+    ).all()
+    return [r.work for r in reviews]

@@ -59,3 +59,21 @@ class Work(Base):
     
     event = relationship("Event", foreign_keys=[event_id])
     author = relationship("User", foreign_keys=[author_id])
+
+class Review(Base):
+    __tablename__ = "reviews"
+    
+    id = Column(Integer, primary_key=True)
+    work_id = Column(Integer, ForeignKey("works.id", ondelete="CASCADE"))
+    reviewer_id = Column(Integer, ForeignKey("users.id"))
+    author_id = Column(Integer, ForeignKey("users.id"))
+    
+    status = Column(String(50), default="assigned")
+    text_comment = Column(Text)
+    
+    assigned_at = Column(DateTime, default=utc_now)
+    completed_at = Column(DateTime, nullable=True)
+    
+    work = relationship("Work", foreign_keys=[work_id])
+    reviewer = relationship("User", foreign_keys=[reviewer_id])
+    author = relationship("User", foreign_keys=[author_id])
