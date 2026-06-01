@@ -1,38 +1,82 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
-    <title>Дашборд</title>
-    <style>
-        body { font-family: Arial; max-width: 800px; margin: 50px auto; padding: 20px; }
-        nav a { display: inline-block; margin: 10px; padding: 10px; background: #f0f0f0; text-decoration: none; color: black; }
-        .logout { background: red; color: white; }
-        .create-btn { background: green; color: white; padding: 10px 20px; border: none; cursor: pointer; margin: 20px 0; }
-        .event-card { border: 1px solid #ddd; padding: 15px; margin: 10px 0; border-radius: 5px; }
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; }
-        .modal-content { background: white; margin: 100px auto; padding: 20px; width: 400px; border-radius: 10px; position: relative; }
-        .close { position: absolute; right: 20px; top: 10px; font-size: 28px; cursor: pointer; }
-        .close:hover { color: red; }
-        input, select, textarea { width: 100%; padding: 8px; margin: 5px 0; box-sizing: border-box; }
-    </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Сервис проверки работ</title>
+    <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-    <h2>Дашборд</h2>
-    <div id="userInfo"></div>
-    
-    <button id="createEventBtn" class="create-btn">+ Создать мероприятие</button>
-    
-    <h3>Мои мероприятия</h3>
-    <div id="eventsList"></div>
-    
-    <nav>
-        <a href="/my_works.html">Мои работы</a>
-        <a href="#" id="logoutBtn" class="logout">Выйти</a>
-    </nav>
-    
-    <!-- Модальное окно -->
+    <main class="dashboard">
+        <aside class="dashboard__sidebar">
+            <nav class="sidebar-menu">
+                <ul class="sidebar-menu__list">
+                    <li class="sidebar-menu__item sidebar-menu__item--active" data-page="events">Список мероприятий</li>
+                    <li class="sidebar-menu__item" data-page="my-works">Мои работы</li>
+                    <li class="sidebar-menu__item" data-page="queue">Очередь проверок</li>
+                    <li class="sidebar-menu__item" data-page="results">Результаты</li>
+                </ul>
+            </nav>
+            <div class="sidebar-profile-wrapper">
+                <div class="sidebar-profile" id="profileBtn">
+                    <span class="sidebar-profile__text">Профиль</span>
+                    <svg class="sidebar-profile__arrow" width="16" height="10" viewBox="0 0 24 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M2 2L12 12L22 2" stroke="#2B0738" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+                <div class="profile-dropdown" id="profileDropdown">
+                    <div class="profile-dropdown__item" id="logoutBtn">Выйти</div>
+                </div>
+            </div>
+        </aside>
+
+        <section class="dashboard__content">
+            <div id="eventsPanel">
+                <h1 class="dashboard__title">Список мероприятий</h1>
+                <div class="events-board" id="eventsList">
+                    <p class="events-board__placeholder">Загрузка...</p>
+                </div>
+                <button type="button" class="dashboard__btn-create" id="createEventBtn">
+                    <span class="dashboard__btn-text">Создать мероприятие</span>
+                    <svg width="44" height="44" viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <line x1="21.6" y1="43.2002" x2="21.6" y2="0.00019455" stroke="#2B0738" stroke-width="4.8"/>
+                        <line y1="21.6" x2="43.2" y2="21.6" stroke="#2B0738" stroke-width="4.8"/>
+                    </svg>
+                </button>
+            </div>
+
+            <div id="myWorksPanel" class="hidden">
+                <h1 class="dashboard__title">Мои работы</h1>
+                <div class="upload-form">
+                    <h3>Загрузить новую работу</h3>
+                    <select id="uploadEventSelect">
+                        <option value="">Выберите мероприятие</option>
+                    </select>
+                    <input type="text" id="workTitle" placeholder="Название работы">
+                    <input type="text" id="workLink" placeholder="Ссылка на работу">
+                    <button id="uploadWorkBtn">Загрузить</button>
+                </div>
+                <div id="worksList"></div>
+            </div>
+
+            <div id="queuePanel" class="hidden">
+                <h1 class="dashboard__title">Очередь проверок</h1>
+                <div class="events-board" id="queueList">
+                    <p class="events-board__placeholder">Выберите мероприятие</p>
+                </div>
+            </div>
+
+            <div id="resultsPanel" class="hidden">
+                <h1 class="dashboard__title">Результаты</h1>
+                <div class="events-board" id="resultsList">
+                    <p class="events-board__placeholder">Загрузка...</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
     <div id="eventModal" class="modal">
         <div class="modal-content">
-            <span class="close">&times;</span>
             <h3>Создать мероприятие</h3>
             <form id="createEventForm">
                 <input type="text" id="title" placeholder="Название" required>
@@ -44,77 +88,11 @@
                 </select>
                 <input type="number" id="timeout" placeholder="Таймаут (часы)" value="48">
                 <button type="submit">Создать</button>
+                <button type="button" id="closeModalBtn">Отмена</button>
             </form>
         </div>
     </div>
 
-    <script>
-        async function loadUser() {
-            const res = await fetch('/api/auth/me');
-            const user = await res.json();
-            if (!user.authenticated) window.location.href = '/login.html';
-            document.getElementById('userInfo').innerHTML = `<p>Привет, ${user.full_name || user.email} (${user.role})</p>`;
-        }
-        
-        async function loadEvents() {
-            const res = await fetch('/api/events/my');
-            const events = await res.json();
-            const container = document.getElementById('eventsList');
-            if (events.length === 0) {
-                container.innerHTML = '<p>Нет мероприятий. Создайте первое!</p>';
-                return;
-            }
-            container.innerHTML = events.map(e => `
-                <div class="event-card">
-                    <strong>${e.title}</strong> (${e.event_type})<br>
-                    Статус: ${e.status}
-                </div>
-            `).join('');
-        }
-        
-        // Модальное окно
-        const modal = document.getElementById('eventModal');
-        const createBtn = document.getElementById('createEventBtn');
-        const closeBtn = document.querySelector('.close');
-        
-        createBtn.onclick = () => modal.style.display = 'block';
-        closeBtn.onclick = () => modal.style.display = 'none';
-        window.onclick = (e) => { if (e.target == modal) modal.style.display = 'none'; };
-        
-        // Отправка формы
-        document.getElementById('createEventForm').onsubmit = async (e) => {
-            e.preventDefault();
-            
-            const res = await fetch('/api/events/', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({
-                    title: document.getElementById('title').value,
-                    description: document.getElementById('description').value,
-                    event_type: document.getElementById('eventType').value,
-                    criteria: [],
-                    review_timeout_hours: parseInt(document.getElementById('timeout').value) || 48
-                })
-            });
-            
-            if (res.ok) {
-                modal.style.display = 'none';
-                document.getElementById('createEventForm').reset();
-                loadEvents();
-            } else {
-                const err = await res.json();
-                alert('Ошибка: ' + (err.detail || 'Неизвестная ошибка'));
-            }
-        };
-        
-        document.getElementById('logoutBtn').addEventListener('click', async (e) => {
-            e.preventDefault();
-            await fetch('/api/auth/logout', {method: 'POST'});
-            window.location.href = '/login.html';
-        });
-        
-        loadUser();
-        loadEvents();
-    </script>
+    <script src="js/dashboard.js"></script>
 </body>
 </html>

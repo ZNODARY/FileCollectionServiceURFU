@@ -1,0 +1,447 @@
+/* Подключение шрифтов */
+@font-face {
+    font-family: 'Lato';
+    src: url('../fonts/Lato-Regular.ttf') format('truetype');
+    font-weight: normal;
+}
+
+@font-face {
+    font-family: 'Montserrat';
+    src: url('../fonts/Montserrat-Regular.ttf') format('truetype');
+    font-weight: normal;
+}
+
+@font-face {
+    font-family: 'Montserrat';
+    src: url('../fonts/Montserrat-Light.ttf') format('truetype');
+    font-weight: 300;
+}
+
+@font-face {
+    font-family: 'Perspective';
+    src: url('../fonts/Perspective.woff') format('woff');
+    font-weight: normal;
+}
+
+/* Глобальные стили */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Lato', 'Montserrat', sans-serif;
+    background: #f5f5f5;
+}
+
+/* Скрытие панелей */
+.hidden {
+    display: none;
+}
+
+/* ========== DASHBOARD ========== */
+.dashboard {
+    display: grid;
+    grid-template-columns: 288px 1fr;
+    gap: 75px;
+    max-width: 1440px;
+    margin: 0 auto;
+    padding: 50px 40px;
+}
+
+.dashboard__sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 45px;
+}
+
+.dashboard__content {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    width: 100%;
+}
+
+.dashboard__title {
+    font-size: 46px;
+    color: #2B0738;
+    margin-bottom: 25px;
+}
+
+.dashboard__btn-create {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    background-color: #F8E8FA;
+    border: 3px solid #D479F5;
+    border-radius: 10px;
+    padding: 15px 35px;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+.dashboard__btn-create:hover {
+    opacity: 0.7;
+}
+
+.dashboard__btn-text {
+    font-size: 32px;
+    color: #2B0738;
+}
+
+/* ========== SIDEBAR MENU ========== */
+.sidebar-menu {
+    background-color: #F8E8FA;
+    border-radius: 10px;
+    padding: 35px 30px;
+}
+
+.sidebar-menu__list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+}
+
+.sidebar-menu__item {
+    font-size: 32px;
+    color: #2B0738;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+.sidebar-menu__item:hover {
+    opacity: 0.7;
+}
+
+.sidebar-menu__item--active {
+    color: #9D4FB9;
+}
+
+/* ========== SIDEBAR PROFILE ========== */
+.sidebar-profile-wrapper {
+    position: relative;
+}
+
+.sidebar-profile {
+    background-color: #F8E8FA;
+    border-radius: 10px;
+    padding: 25px 30px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    gap: 20px;
+    border: none;
+}
+
+.sidebar-profile:hover {
+    opacity: 0.7;
+}
+
+.sidebar-profile__text {
+    font-size: 32px;
+    color: #2B0738;
+}
+
+/* Стрелка */
+.sidebar-profile__arrow {
+    transition: transform 0.3s ease;
+    display: inline-block;
+}
+
+.sidebar-profile__arrow.rotated {
+    transform: rotate(180deg);
+}
+
+/* Выпадающее меню */
+.profile-dropdown {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background-color: #F8E8FA;
+    border-radius: 10px;
+    margin-top: 5px;
+    overflow: hidden;
+    z-index: 100;
+    border: none;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+
+.profile-dropdown.show {
+    display: block;
+}
+
+/* Кнопка выхода */
+.profile-dropdown__item {
+    display: block;
+    padding: 20px 30px;
+    font-size: 32px;
+    color: #2B0738;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: none;
+    background-color: #F8E8FA;
+}
+
+.profile-dropdown__item:hover {
+    background-color: #D479F5;
+    color: white;
+}
+
+/* ========== EVENTS BOARD ========== */
+.events-board {
+    width: 100%;
+    min-height: 550px;
+    background-color: #F8E8FA;
+    border: 3px solid #D479F5;
+    border-radius: 10px;
+    padding: 35px;
+    box-sizing: border-box;
+    margin-bottom: 45px;
+}
+
+.events-board__placeholder {
+    margin: 0;
+    font-size: 36px;
+    color: #2B0738;
+    text-align: center;
+}
+
+/* ========== WORK CARDS ========== */
+.work-card {
+    border: 1px solid #D479F5;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 15px;
+    background: white;
+}
+
+.work-title {
+    font-size: 24px;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+.work-link {
+    color: #D479F5;
+    text-decoration: none;
+}
+
+.work-status {
+    display: inline-block;
+    padding: 5px 15px;
+    border-radius: 20px;
+    font-size: 14px;
+    margin-top: 10px;
+}
+
+.status-pending {
+    background: #FFE4B5;
+    color: #CC7000;
+}
+
+.status-reviewed {
+    background: #C8F7C5;
+    color: #2E7D32;
+}
+
+/* ========== UPLOAD FORM ========== */
+.upload-form {
+    background: #F8E8FA;
+    padding: 20px;
+    border-radius: 10px;
+    margin-bottom: 30px;
+    border: 3px solid #D479F5;
+}
+
+.upload-form h3 {
+    margin-bottom: 15px;
+    color: #2B0738;
+}
+
+.upload-form input,
+.upload-form select {
+    width: 100%;
+    padding: 10px;
+    margin: 10px 0;
+    border: 1px solid #D479F5;
+    border-radius: 5px;
+}
+
+.upload-form button {
+    background: #D479F5;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+.upload-form button:hover {
+    opacity: 0.7;
+}
+
+/* ========== MODAL ========== */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    z-index: 1000;
+}
+
+.modal-content {
+    background: white;
+    margin: 80px auto;
+    padding: 40px;
+    width: 550px;
+    max-width: 90%;
+    border-radius: 10px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+}
+
+.modal-content h3 {
+    font-size: 36px;
+    color: #2B0738;
+    margin-bottom: 25px;
+    text-align: center;
+}
+
+.modal-content input,
+.modal-content select,
+.modal-content textarea {
+    width: 100%;
+    padding: 12px;
+    margin: 12px 0;
+    font-size: 18px;
+    border: 1px solid #D479F5;
+    border-radius: 5px;
+    box-sizing: border-box;
+}
+
+.modal-content textarea {
+    resize: vertical;
+    min-height: 80px;
+}
+
+.modal-content button {
+    background: #D479F5;
+    padding: 12px 25px;
+    font-size: 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-top: 15px;
+    margin-right: 10px;
+    transition: opacity 0.2s;
+}
+
+.modal-content button:hover {
+    opacity: 0.7;
+}
+
+/* ========== ENTRY (LOGIN/REGISTER) ========== */
+.entry {
+    display: grid;
+    grid-template-columns: 1fr;
+    max-width: 500px;
+    margin: 0 auto;
+    padding: 50px 20px;
+}
+
+.entry__title {
+    font-size: 61px;
+    text-align: center;
+    color: #2B0738;
+    margin-bottom: 20px;
+}
+
+.entry form {
+    background-color: #F8E8FA;
+    padding: 20px 37px;
+    border-radius: 10px;
+}
+
+.entry__lable {
+    font-size: 46px;
+    color: #2B0738;
+    display: block;
+    margin-top: 24px;
+    margin-bottom: 24px;
+}
+
+.entry input {
+    width: 100%;
+    height: 69px;
+    border-radius: 10px;
+    border: 0;
+    padding: 0 15px;
+    font-size: 25px;
+    color: #D479F5;
+}
+
+.entry__btn {
+    background-color: #D479F5;
+    font-size: 46px;
+    padding: 5px 29px;
+    border: 0;
+    cursor: pointer;
+    border-radius: 10px;
+    margin-top: 43px;
+    margin-bottom: 43px;
+    width: 100%;
+}
+
+.entry__btn-reg {
+    background-color: #F8E8FA;
+    color: #9D4FB9;
+    font-size: 46px;
+    padding: 5px 29px;
+    border: 0;
+    cursor: pointer;
+    border-radius: 10px;
+    width: 100%;
+    margin-top: 10px;
+}
+
+.entry form {
+    background-color: #F8E8FA;
+    padding: 30px 37px 20px 37px;
+    border-radius: 10px;
+}
+
+#eventsPanel,
+#myWorksPanel,
+#queuePanel,
+#resultsPanel {
+    width: 100%;
+}
+
+#worksList,
+#queueList,
+#resultsList {
+    width: 100%;
+    min-height: 550px;
+    background-color: #F8E8FA;
+    border: 3px solid #D479F5;
+    border-radius: 10px;
+    padding: 35px;
+    box-sizing: border-box;
+    margin-bottom: 45px;
+}
+
+#worksList {
+    overflow-y: auto;
+    max-height: 550px;
+}
