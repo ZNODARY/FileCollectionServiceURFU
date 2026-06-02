@@ -16,12 +16,19 @@ def create_event(session: Session, title: str, description: str | None, event_ty
     session.add(event)
     session.flush()
     
-    participant = EventParticipant(
+    existing_participant = session.query(EventParticipant).filter_by(
         event_id=event.id,
-        user_id=created_by,
-        role="organizer"
-    )
-    session.add(participant)
+        user_id=created_by
+    ).first()
+    
+    if not existing_participant:
+        participant = EventParticipant(
+            event_id=event.id,
+            user_id=created_by,
+            role="organizer"
+        )
+        session.add(participant)
+    
     session.commit()
     
     return event

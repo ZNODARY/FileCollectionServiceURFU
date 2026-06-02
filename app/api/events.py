@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime, timezone, timedelta
 
+from sqlalchemy.exc import IntegrityError
 from app.database.base import get_session
 from app.database.models import Event, EventParticipant, EventInvite
 from app.services.event import create_event, get_user_events
@@ -30,18 +31,22 @@ def create_event_endpoint(data: CreateEventRequest, request: Request):
         raise HTTPException(status_code=401, detail="Not authenticated")
     
     session = get_session()
-    event = create_event(
-        session=session,
-        title=data.title,
-        description=data.description,
-        event_type=data.event_type,
-        criteria=data.criteria,
-        review_timeout_hours=data.review_timeout_hours,
-        created_by=user_id,
-        peer_review_count=data.peer_review_count 
-    )
     
-    return {"message": "Event created", "event_id": event.id}
+    try:
+        event = create_event(
+            session=session,
+            title=data.title,
+            description=data.description,
+            event_type=data.event_type,
+            criteria=data.criteria,
+            review_timeout_hours=data.review_timeout_hours,
+            created_by=user_id,
+            peer_review_count=data.peer_review_count
+        )
+        return {"message": "Event created", "event_id": event.id}
+    except IntegrityError as e:
+        session.rollback()
+        raise HTTPException(status_code=400, detail="You are already a participant of this event")
 
 @router.get("/my")
 def get_my_events(request: Request):
@@ -273,7 +278,7 @@ def remove_participant(event_id: int, user_id: int, request: Request):
     session.commit()
     
     return {"message": "Participant removed successfully"}
-    
+
 @router.delete("/{event_id}")
 def delete_event(event_id: int, request: Request):
     user_id = request.session.get("user_id")
