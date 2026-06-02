@@ -273,3 +273,30 @@ def remove_participant(event_id: int, user_id: int, request: Request):
     session.commit()
     
     return {"message": "Participant removed successfully"}
+    
+@router.delete("/{event_id}")
+def delete_event(event_id: int, request: Request):
+    user_id = request.session.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    session = get_session()
+    
+    event = session.query(Event).get(event_id)
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+    
+    participant = session.query(EventParticipant).filter_by(
+        event_id=event_id,
+        user_id=user_id,
+        role="organizer"
+    ).first()
+    
+    if not participant:
+        raise HTTPException(status_code=403, detail="Only organizer can delete event")
+    
+    # Удаляем все связанные данные (каскадно)
+    session.delete(event)
+    session.commit()
+    
+    return {"message": "Event deleted successfully"}

@@ -120,11 +120,11 @@ async function loadEvents() {
                 <div class="event-type">Тип: ${typeText}</div>
                 <div class="event-status">Статус: ${statusText}</div>
                 <div class="event-created">Создано: ${dateStr} в ${timeStr}</div>
-                ${isOrganizer ? `
+                ${isOrganizer && e.status !== 'finished' ? `
                     <div style="margin-top: 15px;">
                         <button class="invite-event-btn" data-event-id="${e.id}" style="background: #D479F5; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer;">Пригласить</button>
                         <button class="participants-event-btn" data-event-id="${e.id}" style="background: #D479F5; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; margin-left: 10px;">Участники</button>
-                    </div>
+                        <button class="delete-event-btn" data-event-id="${e.id}" style="background: #ff4444; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; margin-left: 10px;">Удалить</button>
                 ` : ''}
             </div>
         `;
@@ -143,6 +143,16 @@ async function loadEvents() {
             e.stopPropagation();
             const eventId = btn.dataset.eventId;
             await showParticipants(eventId);
+        });
+    });
+    
+    document.querySelectorAll('.delete-event-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const eventId = btn.dataset.eventId;
+            pendingDeleteEventId = eventId;
+            document.getElementById('confirmDeleteMessage').innerText = 'Вы уверены, что хотите удалить это мероприятие? Все данные будут потеряны.';
+            document.getElementById('confirmDeleteModal').style.display = 'block';
         });
     });
 }
@@ -170,7 +180,7 @@ async function showParticipants(eventId) {
                         </div>
                         <div style="font-size: 14px; color: #666; margin-top: 5px;">
                             <span style="background: #F8E8FA; padding: 3px 10px; border-radius: 15px;">
-                                ${p.role === 'organizer' ? 'Организатор' : (p.role === 'reviewer' ? 'Проверяющий' : 'Студент')}
+                                ${p.role === 'organizer' ? '👑 Организатор' : (p.role === 'reviewer' ? '👨‍🏫 Проверяющий' : '👨‍🎓 Студент')}
                             </span>
                         </div>
                         <div style="font-size: 12px; color: #999; margin-top: 5px;">
@@ -205,6 +215,7 @@ async function showParticipants(eventId) {
 
 let pendingRemoveEventId = null;
 let pendingRemoveUserId = null;
+let pendingFinishEventId = null;
 
 async function generateInvite(eventId) {
     const res = await fetch(`/api/events/${eventId}/invites`, {
@@ -292,6 +303,40 @@ if (confirmNoBtn) {
     };
 }
 
+let pendingDeleteEventId = null;
+
+const confirmDeleteModal = document.getElementById('confirmDeleteModal');
+const confirmDeleteYesBtn = document.getElementById('confirmDeleteYesBtn');
+const confirmDeleteNoBtn = document.getElementById('confirmDeleteNoBtn');
+
+if (confirmDeleteYesBtn) {
+    confirmDeleteYesBtn.onclick = async () => {
+        if (pendingDeleteEventId) {
+            const res = await fetch(`/api/events/${pendingDeleteEventId}`, {
+                method: 'DELETE',
+                headers: {'Content-Type': 'application/json'}
+            });
+            
+            if (res.ok) {
+                showNotification('Мероприятие удалено', 'success');
+                await loadEvents();
+            } else {
+                const err = await res.json();
+                showNotification(err.detail || 'Ошибка удаления', 'error');
+            }
+        }
+        confirmDeleteModal.style.display = 'none';
+        pendingDeleteEventId = null;
+    };
+}
+
+if (confirmDeleteNoBtn) {
+    confirmDeleteNoBtn.onclick = () => {
+        confirmDeleteModal.style.display = 'none';
+        pendingDeleteEventId = null;
+    };
+}
+
 window.onclick = (e) => {
     if (inviteModal && e.target === inviteModal) {
         inviteModal.style.display = 'none';
@@ -301,6 +346,9 @@ window.onclick = (e) => {
     }
     if (confirmModal && e.target === confirmModal) {
         confirmModal.style.display = 'none';
+    }
+    if (confirmDeleteModal && e.target === confirmDeleteModal) {
+    confirmDeleteModal.style.display = 'none';
     }
     if (modal && e.target === modal) {
         modal.style.display = 'none';

@@ -128,6 +128,17 @@
         </div>
     </div>
 
+    <div id="confirmDeleteModal" class="modal">
+        <div class="modal-content" style="max-width: 400px; text-align: center;">
+            <h3>Удалить мероприятие</h3>
+            <p id="confirmDeleteMessage" style="margin: 20px 0;">Вы уверены, что хотите удалить это мероприятие? Все данные будут потеряны.</p>
+            <div>
+                <button id="confirmDeleteYesBtn" style="background: #ff4444; color: white; border: none; padding: 10px 25px; border-radius: 5px; cursor: pointer;">Удалить</button>
+                <button id="confirmDeleteNoBtn" style="background: gray; color: white; border: none; padding: 10px 25px; border-radius: 5px; cursor: pointer; margin-left: 15px;">Отмена</button>
+            </div>
+        </div>
+    </div>
+
     <div id="notification" style="position: fixed; bottom: 20px; right: 20px; z-index: 1001; display: none;">
         <div style="background: white; border-radius: 10px; padding: 15px 25px; box-shadow: 0 5px 20px rgba(0,0,0,0.2); border-left: 4px solid;">
             <span id="notificationText"></span>
