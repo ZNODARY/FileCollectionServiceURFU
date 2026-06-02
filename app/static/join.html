@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Присоединение к мероприятию</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .join-container {
+            max-width: 500px;
+            margin: 100px auto;
+            padding: 40px;
+            background: #F8E8FA;
+            border: 3px solid #D479F5;
+            border-radius: 10px;
+            text-align: center;
+        }
+        .join-container h2 {
+            color: #2B0738;
+            margin-bottom: 20px;
+        }
+        .btn {
+            display: inline-block;
+            background: #D479F5;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            text-decoration: none;
+            font-size: 16px;
+        }
+        .btn:hover { opacity: 0.7; }
+        .error { color: red; margin-top: 15px; }
+        .success { color: green; margin-top: 15px; }
+        input {
+            display: block;
+            width: 80%;
+            margin: 10px auto;
+            padding: 10px;
+            border: 1px solid #D479F5;
+            border-radius: 5px;
+        }
+        .register-form {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 2px solid #D479F5;
+        }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div class="join-container">
+        <h2>Присоединение к мероприятию</h2>
+        <div id="status">Загрузка...</div>
+        
+        <div id="loginForm" class="register-form hidden">
+            <h3>Войдите в аккаунт</h3>
+            <input type="email" id="login_email" placeholder="Email" required>
+            <input type="password" id="login_password" placeholder="Пароль" required>
+            <div id="login_error" class="error"></div>
+            <button class="btn" id="loginAndJoinBtn">Войти и присоединиться</button>
+            <p style="margin-top: 15px;">Нет аккаунта? <a href="#" id="showRegisterBtn">Зарегистрироваться</a></p>
+        </div>
+        
+        <div id="registerForm" class="register-form hidden">
+            <h3>Для присоединения необходимо зарегистрироваться</h3>
+            <input type="text" id="reg_full_name" placeholder="Полное имя" required>
+            <input type="email" id="reg_email" placeholder="Email" required>
+            <input type="password" id="reg_password" placeholder="Пароль" required>
+            <input type="password" id="reg_password2" placeholder="Подтвердите пароль" required>
+            <div id="reg_error" class="error"></div>
+            <button class="btn" id="registerAndJoinBtn">Зарегистрироваться и присоединиться</button>
+            <p style="margin-top: 15px;"><a href="#" id="showLoginBtn">Уже есть аккаунт? Войти</a></p>
+        </div>
+    </div>
+    
+    <script>
+        console.log('Скрипт загружен');
+        
+        const urlParams = new URLSearchParams(window.location.search);
+        const code = urlParams.get('code');
+        let inviteCode = code;
+        
+        console.log('Code:', code);
+        
+        if (!code) {
+            document.getElementById('status').innerHTML = '<p class="error">Неверная ссылка приглашения</p><a href="/dashboard.html" class="btn">Перейти к дашборду</a>';
+        } else {
+            fetch('/api/auth/me')
+                .then(res => res.json())
+                .then(user => {
+                    console.log('User:', user);
+                    if (user.authenticated) {
+                        joinEvent(code);
+                    } else {
+                        document.getElementById('status').innerHTML = '<p>Для присоединения к мероприятию нужно войти или зарегистрироваться</p>';
+                        document.getElementById('loginForm').classList.remove('hidden');
+                    }
+                })
+                .catch(err => {
+                    console.error('Auth error:', err);
+                    document.getElementById('status').innerHTML = '<p class="error">Ошибка проверки авторизации</p>';
+                });
+        }
+        
+        function joinEvent(code) {
+            console.log('Joining event with code:', code);
+            fetch('/api/events/join', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({code: code})
+            })
+            .then(async res => {
+                console.log('Join response status:', res.status);
+                if (res.ok) {
+                    const data = await res.json();
+                    console.log('Join success:', data);
+                    document.getElementById('status').innerHTML = `
+                        <p class="success">✅ Вы успешно присоединились к мероприятию!</p>
+                        <a href="/dashboard.html" class="btn">Перейти к дашборду</a>
+                    `;
+                    document.getElementById('loginForm').classList.add('hidden');
+                    document.getElementById('registerForm').classList.add('hidden');
+                } else {
+                    const err = await res.json();
+                    console.error('Join error:', err);
+                    document.getElementById('status').innerHTML = `<p class="error">❌ Ошибка: ${err.detail || 'Неизвестная ошибка'}</p>`;
+                }
+            })
+            .catch(error => {
+                console.error('Fetch error:', error);
+                document.getElementById('status').innerHTML = `<p class="error">❌ Ошибка соединения с сервером</p>`;
+            });
+        }
+        
+        document.getElementById('registerAndJoinBtn').onclick = async () => {
+            const full_name = document.getElementById('reg_full_name').value;
+            const email = document.getElementById('reg_email').value;
+            const password = document.getElementById('reg_password').value;
+            const password2 = document.getElementById('reg_password2').value;
+            
+            if (password !== password2) {
+                document.getElementById('reg_error').textContent = 'Пароли не совпадают';
+                return;
+            }
+            
+            const res = await fetch('/api/auth/register', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({full_name, email, password})
+            });
+            
+            if (res.ok) {
+                joinEvent(inviteCode);
+            } else {
+                const err = await res.json();
+                document.getElementById('reg_error').textContent = err.detail || 'Ошибка регистрации';
+            }
+        };
+        
+        document.getElementById('loginAndJoinBtn').onclick = async () => {
+            const email = document.getElementById('login_email').value;
+            const password = document.getElementById('login_password').value;
+            
+            const res = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({email, password})
+            });
+            
+            if (res.ok) {
+                joinEvent(inviteCode);
+            } else {
+                const err = await res.json();
+                document.getElementById('login_error').textContent = err.detail || 'Ошибка входа';
+            }
+        };
+        
+        document.getElementById('showRegisterBtn').onclick = (e) => {
+            e.preventDefault();
+            document.getElementById('loginForm').classList.add('hidden');
+            document.getElementById('registerForm').classList.remove('hidden');
+        };
+        
+        const showLoginLink = document.getElementById('showLoginBtn');
+        if (showLoginLink) {
+            showLoginLink.onclick = (e) => {
+                e.preventDefault();
+                document.getElementById('registerForm').classList.add('hidden');
+                document.getElementById('loginForm').classList.remove('hidden');
+            };
+        }
+    </script>
+</body>
+</html>

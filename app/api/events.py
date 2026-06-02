@@ -1,10 +1,12 @@
+import secrets
+import string
 from fastapi import APIRouter, Request, HTTPException
 from pydantic import BaseModel
 from typing import Optional
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 from app.database.base import get_session
-from app.database.models import Event, EventParticipant
+from app.database.models import Event, EventParticipant, EventInvite
 from app.services.event import create_event, get_user_events
 
 router = APIRouter()
@@ -16,6 +18,10 @@ class CreateEventRequest(BaseModel):
     criteria: list = []
     review_timeout_hours: int = 48
     peer_review_count: Optional[int] = 2
+
+def generate_invite_code():
+    alphabet = string.ascii_uppercase + string.digits
+    return ''.join(secrets.choice(alphabet) for _ in range(8))
 
 @router.post("/")
 def create_event_endpoint(data: CreateEventRequest, request: Request):
@@ -94,3 +100,104 @@ def start_event(event_id: int, request: Request):
     session.commit()
     
     return {"message": "Event started", "reviews_created": result.get("reviews_created", 0) if event.event_type == "peer" else 0}
+
+@router.post("/{event_id}/invites")
+def create_invite(event_id: int, request: Request):
+    user_id = request.session.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    session = get_session()
+    
+    event = session.query(Event).get(event_id)
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+    
+    participant = session.query(EventParticipant).filter_by(
+        event_id=event_id,
+        user_id=user_id,
+        role="organizer"
+    ).first()
+    
+    if not participant:
+        raise HTTPException(status_code=403, detail="Only organizer can create invites")
+    
+    code = generate_invite_code()
+    expires_at = datetime.now(timezone.utc) + timedelta(days=7)
+    
+    invite = EventInvite(
+        code=code,
+        event_id=event_id,
+        role="performer",
+        expires_at=expires_at.replace(tzinfo=None)
+    )
+    session.add(invite)
+    session.commit()
+    
+    invite_link = f"/join?code={code}"
+    
+    return {"code": code, "link": invite_link, "expires_at": expires_at.isoformat()}
+
+
+@router.post("/join")
+def join_by_code(data: dict, request: Request):
+    user_id = request.session.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    code = data.get("code")
+    if not code:
+        raise HTTPException(status_code=400, detail="Code required")
+    
+    session = get_session()
+    
+    invite = session.query(EventInvite).filter_by(
+        code=code,
+        is_used=0
+    ).first()
+    
+    if not invite:
+        raise HTTPException(status_code=404, detail="Invalid or expired invite")
+    
+    now_naive = datetime.now(timezone.utc).replace(tzinfo=None)
+    if invite.expires_at < now_naive:
+        raise HTTPException(status_code=400, detail="Invite expired")
+    
+    existing = session.query(EventParticipant).filter_by(
+        event_id=invite.event_id,
+        user_id=user_id
+    ).first()
+    
+    if existing:
+        raise HTTPException(status_code=400, detail="Already a participant")
+    
+    participant = EventParticipant(
+        event_id=invite.event_id,
+        user_id=user_id,
+        role=invite.role
+    )
+    session.add(participant)
+    
+    invite.is_used = 1
+    invite.used_by = user_id
+    invite.used_at = datetime.now(timezone.utc).replace(tzinfo=None)
+    
+    session.commit()
+    
+    return {"message": "Joined successfully", "event_id": invite.event_id}
+
+@router.get("/{event_id}/is-organizer")
+def is_organizer(event_id: int, request: Request):
+    user_id = request.session.get("user_id")
+    if not user_id:
+        return {"is_organizer": False}
+    
+    session = get_session()
+    
+    participant = session.query(EventParticipant).filter_by(
+        event_id=event_id,
+        user_id=user_id,
+        role="organizer"
+    ).first()
+    
+    return {"is_organizer": participant is not None}

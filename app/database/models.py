@@ -30,7 +30,7 @@ class Event(Base):
     created_at = Column(DateTime, default=utc_now)
     started_at = Column(DateTime, nullable=True)
     finished_at = Column(DateTime, nullable=True)
-    
+
     peer_review_count = Column(Integer, default=2)
     
     creator = relationship("User", foreign_keys=[created_by])
@@ -47,6 +47,19 @@ class EventParticipant(Base):
     
     event = relationship("Event", foreign_keys=[event_id])
     user = relationship("User", foreign_keys=[user_id])
+
+class EventInvite(Base):
+    __tablename__ = "event_invites"
+    
+    id = Column(Integer, primary_key=True)
+    code = Column(String(20), unique=True, nullable=False)
+    event_id = Column(Integer, ForeignKey("events.id", ondelete="CASCADE"))
+    role = Column(String(50), nullable=False)
+    created_at = Column(DateTime, default=utc_now)
+    expires_at = Column(DateTime)
+    is_used = Column(Integer, default=0)
+    used_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    used_at = Column(DateTime, nullable=True)
 
 class Work(Base):
     __tablename__ = "works"

@@ -74,7 +74,7 @@ async function loadEvents() {
         container.innerHTML = '<p class="events-board__placeholder">Нет мероприятий. Создайте первое!</p>';
         return;
     }
-    container.innerHTML = events.map(e => {
+    container.innerHTML = await Promise.all(events.map(async e => {
         let typeText = '';
         if (e.event_type === 'expert') typeText = 'Экспертная проверка';
         else if (e.event_type === 'peer') typeText = 'P2P проверка';
@@ -89,16 +89,81 @@ async function loadEvents() {
         const dateStr = date.toLocaleDateString('ru-RU');
         const timeStr = date.toLocaleTimeString('ru-RU', {hour: '2-digit', minute: '2-digit'});
         
+        // Проверяем, является ли текущий пользователь организатором
+        const isOrganizer = await checkIsOrganizer(e.id, user.user_id);
+        
         return `
-            <div class="event-card">
+            <div class="event-card" data-event-id="${e.id}">
                 <div class="event-title">${e.title}</div>
                 <div class="event-type">Тип: ${typeText}</div>
                 <div class="event-status">Статус: ${statusText}</div>
                 <div class="event-created">Создано: ${dateStr} в ${timeStr}</div>
+                ${isOrganizer ? `<button class="invite-event-btn" data-event-id="${e.id}" style="margin-top: 15px; background: #D479F5; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer;">Пригласить</button>` : ''}
             </div>
         `;
-    }).join('');
+    })).then(html => html.join(''));
+    
+    document.querySelectorAll('.invite-event-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const eventId = btn.dataset.eventId;
+            await generateInvite(eventId);
+        });
+    });
 }
+
+async function checkIsOrganizer(eventId, userId) {
+    const res = await fetch(`/api/events/${eventId}/is-organizer`);
+    const data = await res.json();
+    return data.is_organizer;
+}
+
+async function generateInvite(eventId) {
+    const res = await fetch(`/api/events/${eventId}/invites`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'}
+    });
+    if (res.ok) {
+        const data = await res.json();
+        const inviteUrl = `${window.location.origin}/join.html?code=${data.code}`;
+        const inviteInput = document.getElementById('inviteLinkInput');
+        if (inviteInput) {
+            inviteInput.value = inviteUrl;
+        }
+        const inviteModal = document.getElementById('inviteModal');
+        if (inviteModal) {
+            inviteModal.style.display = 'block';
+        }
+    } else {
+        alert('Ошибка создания приглашения');
+    }
+}
+
+const inviteModal = document.getElementById('inviteModal');
+const closeInviteModalBtn = document.getElementById('closeInviteModalBtn');
+const copyInviteBtn = document.getElementById('copyInviteBtn');
+
+if (closeInviteModalBtn) {
+    closeInviteModalBtn.onclick = () => {
+        if (inviteModal) inviteModal.style.display = 'none';
+    };
+}
+
+if (copyInviteBtn) {
+    copyInviteBtn.onclick = () => {
+        const input = document.getElementById('inviteLinkInput');
+        if (input) {
+            input.select();
+            document.execCommand('copy');
+        }
+    };
+}
+
+window.onclick = (e) => {
+    if (inviteModal && e.target === inviteModal) {
+        inviteModal.style.display = 'none';
+    }
+};
 
 async function loadEventsForSelect() {
     const res = await fetch('/api/events/my');
@@ -150,7 +215,6 @@ document.getElementById('uploadWorkBtn').onclick = async () => {
         })
     });
     if (res.ok) {
-        alert('Работа загружена!');
         document.getElementById('workTitle').value = '';
         document.getElementById('workLink').value = '';
         loadMyWorks();
@@ -165,7 +229,9 @@ const createBtn = document.getElementById('createEventBtn');
 const closeBtn = document.getElementById('closeModalBtn');
 if (createBtn) createBtn.onclick = () => modal.style.display = 'block';
 if (closeBtn) closeBtn.onclick = () => modal.style.display = 'none';
-window.onclick = (e) => { if (e.target === modal) modal.style.display = 'none'; };
+window.onclick = (e) => {
+    if (e.target === modal) modal.style.display = 'none';
+};
 
 document.getElementById('createEventForm').onsubmit = async (e) => {
     e.preventDefault();
@@ -193,7 +259,6 @@ document.getElementById('createEventForm').onsubmit = async (e) => {
         document.getElementById('createEventForm').reset();
         if (peerCountBlock) peerCountBlock.style.display = 'none';
         loadEvents();
-        alert('Мероприятие создано!');
     } else {
         const err = await res.json();
         alert('Ошибка: ' + (err.detail || 'Неизвестная ошибка'));

@@ -1,5 +1,6 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy.pool import NullPool
 
 from app.config import load_config
 
@@ -8,6 +9,7 @@ config = load_config()
 engine = create_engine(
     config.database_url,
     connect_args={"check_same_thread": False} if "sqlite" in config.database_url else {}
+    poolclass=NullPool
 )
 
 Base = declarative_base()
