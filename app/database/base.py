@@ -8,7 +8,7 @@ config = load_config()
 
 engine = create_engine(
     config.database_url,
-    connect_args={"check_same_thread": False} if "sqlite" in config.database_url else {}
+    connect_args={"check_same_thread": False} if "sqlite" in config.database_url else {},
     poolclass=NullPool
 )
 

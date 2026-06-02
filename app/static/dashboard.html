@@ -107,6 +107,33 @@
         </div>
     </div>
 
+    <div id="participantsModal" class="modal">
+        <div class="modal-content" style="max-width: 550px;">
+            <h3>Участники мероприятия</h3>
+            <div id="participantsList" style="max-height: 400px; overflow-y: auto;">
+                <p style="text-align: center; color: gray;">Загрузка...</p>
+            </div>
+            <button id="closeParticipantsModalBtn" style="background: #D479F5; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; margin-top: 20px;">Закрыть</button>
+        </div>
+    </div>
+
+    <div id="confirmModal" class="modal">
+        <div class="modal-content" style="max-width: 400px; text-align: center;">
+            <h3>Подтверждение</h3>
+            <p id="confirmMessage" style="margin: 20px 0;">Вы уверены, что хотите удалить этого участника?</p>
+            <div>
+                <button id="confirmYesBtn" style="background: #ff4444; color: white; border: none; padding: 10px 25px; border-radius: 5px; cursor: pointer;">Удалить</button>
+                <button id="confirmNoBtn" style="background: gray; color: white; border: none; padding: 10px 25px; border-radius: 5px; cursor: pointer; margin-left: 15px;">Отмена</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="notification" style="position: fixed; bottom: 20px; right: 20px; z-index: 1001; display: none;">
+        <div style="background: white; border-radius: 10px; padding: 15px 25px; box-shadow: 0 5px 20px rgba(0,0,0,0.2); border-left: 4px solid;">
+            <span id="notificationText"></span>
+        </div>
+    </div>
+
     <script src="js/dashboard.js"></script>
 </body>
 </html>

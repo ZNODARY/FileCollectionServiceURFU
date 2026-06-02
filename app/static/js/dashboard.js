@@ -62,6 +62,28 @@ if (eventTypeSelect && peerCountBlock) {
     });
 }
 
+function showNotification(message, type) {
+    const notification = document.getElementById('notification');
+    const notificationText = document.getElementById('notificationText');
+    const notificationDiv = notification.querySelector('div');
+    
+    notificationText.innerText = message;
+    
+    if (type === 'success') {
+        notificationDiv.style.borderLeftColor = '#4CAF50';
+    } else if (type === 'error') {
+        notificationDiv.style.borderLeftColor = '#ff4444';
+    } else {
+        notificationDiv.style.borderLeftColor = '#D479F5';
+    }
+    
+    notification.style.display = 'block';
+    
+    setTimeout(() => {
+        notification.style.display = 'none';
+    }, 3000);
+}
+
 async function loadEvents() {
     const res = await fetch('/api/auth/me');
     const user = await res.json();
@@ -74,6 +96,7 @@ async function loadEvents() {
         container.innerHTML = '<p class="events-board__placeholder">Нет мероприятий. Создайте первое!</p>';
         return;
     }
+    
     container.innerHTML = await Promise.all(events.map(async e => {
         let typeText = '';
         if (e.event_type === 'expert') typeText = 'Экспертная проверка';
@@ -89,7 +112,6 @@ async function loadEvents() {
         const dateStr = date.toLocaleDateString('ru-RU');
         const timeStr = date.toLocaleTimeString('ru-RU', {hour: '2-digit', minute: '2-digit'});
         
-        // Проверяем, является ли текущий пользователь организатором
         const isOrganizer = await checkIsOrganizer(e.id, user.user_id);
         
         return `
@@ -98,7 +120,12 @@ async function loadEvents() {
                 <div class="event-type">Тип: ${typeText}</div>
                 <div class="event-status">Статус: ${statusText}</div>
                 <div class="event-created">Создано: ${dateStr} в ${timeStr}</div>
-                ${isOrganizer ? `<button class="invite-event-btn" data-event-id="${e.id}" style="margin-top: 15px; background: #D479F5; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer;">Пригласить</button>` : ''}
+                ${isOrganizer ? `
+                    <div style="margin-top: 15px;">
+                        <button class="invite-event-btn" data-event-id="${e.id}" style="background: #D479F5; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer;">Пригласить</button>
+                        <button class="participants-event-btn" data-event-id="${e.id}" style="background: #D479F5; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; margin-left: 10px;">Участники</button>
+                    </div>
+                ` : ''}
             </div>
         `;
     })).then(html => html.join(''));
@@ -110,6 +137,14 @@ async function loadEvents() {
             await generateInvite(eventId);
         });
     });
+    
+    document.querySelectorAll('.participants-event-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const eventId = btn.dataset.eventId;
+            await showParticipants(eventId);
+        });
+    });
 }
 
 async function checkIsOrganizer(eventId, userId) {
@@ -117,6 +152,59 @@ async function checkIsOrganizer(eventId, userId) {
     const data = await res.json();
     return data.is_organizer;
 }
+
+async function showParticipants(eventId) {
+    const res = await fetch(`/api/events/${eventId}/participants`);
+    if (res.ok) {
+        const participants = await res.json();
+        const container = document.getElementById('participantsList');
+        
+        if (participants.length === 0) {
+            container.innerHTML = '<p style="text-align: center; color: gray;">Нет участников</p>';
+        } else {
+            container.innerHTML = participants.map(p => `
+                <div style="border-bottom: 1px solid #D479F5; padding: 15px 0; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <div style="font-weight: bold; font-size: 18px; color: #2B0738;">
+                            ${p.user_full_name || p.user_email}
+                        </div>
+                        <div style="font-size: 14px; color: #666; margin-top: 5px;">
+                            <span style="background: #F8E8FA; padding: 3px 10px; border-radius: 15px;">
+                                ${p.role === 'organizer' ? 'Организатор' : (p.role === 'reviewer' ? 'Проверяющий' : 'Студент')}
+                            </span>
+                        </div>
+                        <div style="font-size: 12px; color: #999; margin-top: 5px;">
+                            Присоединился: ${new Date(p.joined_at).toLocaleDateString('ru-RU')}
+                        </div>
+                    </div>
+                    ${p.role !== 'organizer' ? `
+                        <button class="remove-participant-btn" data-event-id="${eventId}" data-user-id="${p.user_id}" style="background: #ff4444; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer;">Удалить</button>
+                    ` : ''}
+                </div>
+            `).join('');
+        }
+        
+        document.querySelectorAll('.remove-participant-btn').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const eventId = btn.dataset.eventId;
+                const userId = btn.dataset.userId;
+                pendingRemoveEventId = eventId;
+                pendingRemoveUserId = userId;
+                document.getElementById('confirmMessage').innerText = 'Вы уверены, что хотите удалить этого участника?';
+                document.getElementById('confirmModal').style.display = 'block';
+            });
+        });
+        
+        document.getElementById('participantsModal').style.display = 'block';
+    } else {
+        const err = await res.json();
+        showNotification(err.detail || 'Ошибка загрузки участников', 'error');
+    }
+}
+
+let pendingRemoveEventId = null;
+let pendingRemoveUserId = null;
 
 async function generateInvite(eventId) {
     const res = await fetch(`/api/events/${eventId}/invites`, {
@@ -135,7 +223,8 @@ async function generateInvite(eventId) {
             inviteModal.style.display = 'block';
         }
     } else {
-        alert('Ошибка создания приглашения');
+        const err = await res.json();
+        showNotification(err.detail || 'Ошибка создания приглашения', 'error');
     }
 }
 
@@ -155,13 +244,66 @@ if (copyInviteBtn) {
         if (input) {
             input.select();
             document.execCommand('copy');
+            showNotification('Ссылка скопирована', 'success');
         }
+    };
+}
+
+const participantsModal = document.getElementById('participantsModal');
+const closeParticipantsModalBtn = document.getElementById('closeParticipantsModalBtn');
+
+if (closeParticipantsModalBtn) {
+    closeParticipantsModalBtn.onclick = () => {
+        if (participantsModal) participantsModal.style.display = 'none';
+    };
+}
+
+const confirmModal = document.getElementById('confirmModal');
+const confirmYesBtn = document.getElementById('confirmYesBtn');
+const confirmNoBtn = document.getElementById('confirmNoBtn');
+
+if (confirmYesBtn) {
+    confirmYesBtn.onclick = async () => {
+        if (pendingRemoveEventId && pendingRemoveUserId) {
+            const res = await fetch(`/api/events/${pendingRemoveEventId}/participants/${pendingRemoveUserId}`, {
+                method: 'DELETE',
+                headers: {'Content-Type': 'application/json'}
+            });
+            
+            if (res.ok) {
+                showNotification('Участник удалён', 'success');
+                await showParticipants(pendingRemoveEventId);
+            } else {
+                const err = await res.json();
+                showNotification(err.detail || 'Ошибка удаления', 'error');
+            }
+        }
+        confirmModal.style.display = 'none';
+        pendingRemoveEventId = null;
+        pendingRemoveUserId = null;
+    };
+}
+
+if (confirmNoBtn) {
+    confirmNoBtn.onclick = () => {
+        confirmModal.style.display = 'none';
+        pendingRemoveEventId = null;
+        pendingRemoveUserId = null;
     };
 }
 
 window.onclick = (e) => {
     if (inviteModal && e.target === inviteModal) {
         inviteModal.style.display = 'none';
+    }
+    if (participantsModal && e.target === participantsModal) {
+        participantsModal.style.display = 'none';
+    }
+    if (confirmModal && e.target === confirmModal) {
+        confirmModal.style.display = 'none';
+    }
+    if (modal && e.target === modal) {
+        modal.style.display = 'none';
     }
 };
 
@@ -202,7 +344,7 @@ document.getElementById('uploadWorkBtn').onclick = async () => {
     const title = document.getElementById('workTitle').value;
     const link = document.getElementById('workLink').value;
     if (!eventId || !title || !link) {
-        alert('Заполните все поля');
+        showNotification('Заполните все поля', 'error');
         return;
     }
     const res = await fetch('/api/works/', {
@@ -215,12 +357,13 @@ document.getElementById('uploadWorkBtn').onclick = async () => {
         })
     });
     if (res.ok) {
+        showNotification('Работа загружена!', 'success');
         document.getElementById('workTitle').value = '';
         document.getElementById('workLink').value = '';
         loadMyWorks();
     } else {
         const err = await res.json();
-        alert('Ошибка: ' + (err.detail || 'Неизвестная ошибка'));
+        showNotification(err.detail || 'Ошибка загрузки', 'error');
     }
 };
 
@@ -229,9 +372,6 @@ const createBtn = document.getElementById('createEventBtn');
 const closeBtn = document.getElementById('closeModalBtn');
 if (createBtn) createBtn.onclick = () => modal.style.display = 'block';
 if (closeBtn) closeBtn.onclick = () => modal.style.display = 'none';
-window.onclick = (e) => {
-    if (e.target === modal) modal.style.display = 'none';
-};
 
 document.getElementById('createEventForm').onsubmit = async (e) => {
     e.preventDefault();
@@ -259,9 +399,10 @@ document.getElementById('createEventForm').onsubmit = async (e) => {
         document.getElementById('createEventForm').reset();
         if (peerCountBlock) peerCountBlock.style.display = 'none';
         loadEvents();
+        showNotification('Мероприятие создано!', 'success');
     } else {
         const err = await res.json();
-        alert('Ошибка: ' + (err.detail || 'Неизвестная ошибка'));
+        showNotification(err.detail || 'Ошибка создания', 'error');
     }
 };
 
