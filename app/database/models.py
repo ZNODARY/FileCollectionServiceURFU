@@ -30,7 +30,6 @@ class Event(Base):
     created_at = Column(DateTime, default=utc_now)
     started_at = Column(DateTime, nullable=True)
     finished_at = Column(DateTime, nullable=True)
-
     peer_review_count = Column(Integer, default=2)
     
     creator = relationship("User", foreign_keys=[created_by])

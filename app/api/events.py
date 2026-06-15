@@ -93,6 +93,7 @@ def start_event(event_id: int, request: Request):
     if event.status != "draft":
         raise HTTPException(status_code=400, detail="Event already started")
     
+    result = None
     if event.event_type == "peer":
         from app.services.distribution import distribute_peer_reviews
         result = distribute_peer_reviews(session, event_id)
@@ -104,7 +105,7 @@ def start_event(event_id: int, request: Request):
     event.started_at = datetime.now(timezone.utc)
     session.commit()
     
-    return {"message": "Event started", "reviews_created": result.get("reviews_created", 0) if event.event_type == "peer" else 0}
+    return {"message": "Event started", "reviews_created": result.get("reviews_created", 0) if result else 0}
 
 @router.post("/{event_id}/invites")
 def create_invite(event_id: int, request: Request):
@@ -142,7 +143,6 @@ def create_invite(event_id: int, request: Request):
     invite_link = f"/join?code={code}"
     
     return {"code": code, "link": invite_link, "expires_at": expires_at.isoformat()}
-
 
 @router.post("/join")
 def join_by_code(data: dict, request: Request):
@@ -206,7 +206,6 @@ def is_organizer(event_id: int, request: Request):
     ).first()
     
     return {"is_organizer": participant is not None}
-
 
 @router.get("/{event_id}/participants")
 def get_event_participants(event_id: int, request: Request):
@@ -300,7 +299,6 @@ def delete_event(event_id: int, request: Request):
     if not participant:
         raise HTTPException(status_code=403, detail="Only organizer can delete event")
     
-    # Удаляем все связанные данные (каскадно)
     session.delete(event)
     session.commit()
     
