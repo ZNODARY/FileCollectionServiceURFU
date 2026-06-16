@@ -1,3 +1,9 @@
+let currentQueueEventId = null;
+let currentReviewWorkId = null;
+let pendingRemoveEventId = null;
+let pendingRemoveUserId = null;
+let pendingDeleteEventId = null;
+
 function showPanel(panelName) {
     document.getElementById('eventsPanel').classList.add('hidden');
     document.getElementById('myWorksPanel').classList.add('hidden');
@@ -13,8 +19,8 @@ document.querySelectorAll('.sidebar-menu__item').forEach(item => {
         const page = item.dataset.page;
         if (page === 'events') showPanel('events');
         else if (page === 'my-works') { showPanel('myWorks'); loadEventsForSelect(); loadMyWorks(); }
-        else if (page === 'queue') showPanel('queue');
-        else if (page === 'results') showPanel('results');
+        else if (page === 'queue') { showPanel('queue'); loadQueueEvents(); }
+        else if (page === 'results') { showPanel('results'); loadResults('my'); }
     };
 });
 
@@ -125,6 +131,10 @@ async function loadEvents() {
                         <button class="invite-event-btn" data-event-id="${e.id}" style="background: #D479F5; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer;">Пригласить</button>
                         <button class="participants-event-btn" data-event-id="${e.id}" style="background: #D479F5; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; margin-left: 10px;">Участники</button>
                         <button class="delete-event-btn" data-event-id="${e.id}" style="background: #ff4444; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; margin-left: 10px;">Удалить</button>
+                        ${e.event_type === 'peer' && e.status === 'draft' ? `
+                            <button class="start-event-btn" data-event-id="${e.id}" style="background: #4CAF50; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; margin-left: 10px;">Запустить P2P</button>
+                        ` : ''}
+                    </div>
                 ` : ''}
             </div>
         `;
@@ -153,6 +163,21 @@ async function loadEvents() {
             pendingDeleteEventId = eventId;
             document.getElementById('confirmDeleteMessage').innerText = 'Вы уверены, что хотите удалить это мероприятие? Все данные будут потеряны.';
             document.getElementById('confirmDeleteModal').style.display = 'block';
+        });
+    });
+    
+    document.querySelectorAll('.start-event-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const eventId = btn.dataset.eventId;
+            const res = await fetch(`/api/events/${eventId}/start`, { method: 'POST' });
+            if (res.ok) {
+                showNotification('Мероприятие запущено! Работы распределены.', 'success');
+                loadEvents();
+            } else {
+                const err = await res.json();
+                showNotification(err.detail || 'Ошибка запуска', 'error');
+            }
         });
     });
 }
@@ -188,7 +213,12 @@ async function showParticipants(eventId) {
                         </div>
                     </div>
                     ${p.role !== 'organizer' ? `
-                        <button class="remove-participant-btn" data-event-id="${eventId}" data-user-id="${p.user_id}" style="background: #ff4444; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer;">Удалить</button>
+                        <div style="display: flex; gap: 8px;">
+                            <button class="change-role-btn" data-event-id="${eventId}" data-user-id="${p.user_id}" data-current-role="${p.role}" style="background: #4CAF50; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer;">
+                                ${p.role === 'reviewer' ? 'Сделать участником' : 'Сделать проверяющим'}
+                            </button>
+                            <button class="remove-participant-btn" data-event-id="${eventId}" data-user-id="${p.user_id}" style="background: #ff4444; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer;">Удалить</button>
+                        </div>
                     ` : ''}
                 </div>
             `).join('');
@@ -206,16 +236,36 @@ async function showParticipants(eventId) {
             });
         });
         
+        document.querySelectorAll('.change-role-btn').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const eventId = btn.dataset.eventId;
+                const userId = btn.dataset.userId;
+                const currentRole = btn.dataset.currentRole;
+                
+                const newRole = currentRole === 'reviewer' ? 'performer' : 'reviewer';
+                
+                const res = await fetch(`/api/events/${eventId}/participants/${userId}/role`, {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'}
+                });
+                
+                if (res.ok) {
+                    showNotification(`Роль изменена`, 'success');
+                    await showParticipants(eventId);
+                } else {
+                    const err = await res.json();
+                    showNotification(err.detail || 'Ошибка изменения роли', 'error');
+                }
+            });
+        });
+        
         document.getElementById('participantsModal').style.display = 'block';
     } else {
         const err = await res.json();
         showNotification(err.detail || 'Ошибка загрузки участников', 'error');
     }
 }
-
-let pendingRemoveEventId = null;
-let pendingRemoveUserId = null;
-let pendingFinishEventId = null;
 
 async function generateInvite(eventId) {
     const res = await fetch(`/api/events/${eventId}/invites`, {
@@ -303,8 +353,6 @@ if (confirmNoBtn) {
     };
 }
 
-let pendingDeleteEventId = null;
-
 const confirmDeleteModal = document.getElementById('confirmDeleteModal');
 const confirmDeleteYesBtn = document.getElementById('confirmDeleteYesBtn');
 const confirmDeleteNoBtn = document.getElementById('confirmDeleteNoBtn');
@@ -337,22 +385,196 @@ if (confirmDeleteNoBtn) {
     };
 }
 
-window.onclick = (e) => {
-    if (inviteModal && e.target === inviteModal) {
-        inviteModal.style.display = 'none';
+async function loadQueueEvents() {
+    const res = await fetch('/api/events/my');
+    const events = await res.json();
+    const select = document.getElementById('queueEventSelect');
+    select.innerHTML = '<option value="">Выберите мероприятие</option>';
+    events.forEach(e => {
+        select.innerHTML += `<option value="${e.id}">${e.title}</option>`;
+    });
+    if (events.length > 0) {
+        select.value = events[0].id;
+        currentQueueEventId = parseInt(events[0].id);
+        loadQueueWorks();
     }
-    if (participantsModal && e.target === participantsModal) {
-        participantsModal.style.display = 'none';
+    select.onchange = () => {
+        currentQueueEventId = parseInt(select.value);
+        loadQueueWorks();
+        document.getElementById('nextWorkResult').innerHTML = '';
+    };
+}
+
+async function loadQueueWorks() {
+    if (!currentQueueEventId) {
+        document.getElementById('queueList').innerHTML = '<p class="events-board__placeholder">Выберите мероприятие</p>';
+        return;
     }
-    if (confirmModal && e.target === confirmModal) {
-        confirmModal.style.display = 'none';
+    
+    const res = await fetch('/api/reviews/assigned');
+    const works = await res.json();
+    const container = document.getElementById('queueList');
+    
+    if (works.length === 0) {
+        container.innerHTML = '<p class="events-board__placeholder">Нет назначенных работ</p>';
+        return;
     }
-    if (confirmDeleteModal && e.target === confirmDeleteModal) {
-    confirmDeleteModal.style.display = 'none';
+    
+    container.innerHTML = works.map(w => `
+        <div style="border: 1px solid #D479F5; border-radius: 10px; padding: 20px; margin-bottom: 15px; background: white;">
+            <strong style="font-size: 18px;">${w.title}</strong><br>
+            <button class="review-work-btn" data-work-id="${w.id}" style="background: #D479F5; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; margin-top: 10px;">Проверить</button>
+        </div>
+    `).join('');
+}
+
+document.addEventListener('click', function(e) {
+    if (e.target.classList.contains('review-work-btn')) {
+        const workId = e.target.dataset.workId;
+        openReviewModal(workId);
     }
-    if (modal && e.target === modal) {
-        modal.style.display = 'none';
+});
+
+document.getElementById('nextWorkBtn').onclick = async () => {
+    if (!currentQueueEventId) {
+        showNotification('Сначала выберите мероприятие', 'error');
+        return;
     }
+    
+    const btn = document.getElementById('nextWorkBtn');
+    btn.disabled = true;
+    btn.style.opacity = '0.5';
+    
+    const res = await fetch(`/api/reviews/next?event_id=${currentQueueEventId}`);
+    const data = await res.json();
+    
+    btn.disabled = false;
+    btn.style.opacity = '1';
+    
+    if (data.work) {
+        showNotification('Работа взята на проверку!', 'success');
+        loadQueueWorks();
+    } else {
+        showNotification(data.message || 'Нет доступных работ', 'error');
+    }
+};
+
+async function openReviewModal(workId) {
+    currentReviewWorkId = workId;
+    
+    document.getElementById('reviewWorkTitle').textContent = 'Загрузка...';
+    document.getElementById('reviewWorkLink').href = '#';
+    document.getElementById('reviewWorkLink').textContent = 'Открыть работу';
+    document.getElementById('reviewComment').value = '';
+    document.getElementById('reviewError').textContent = '';
+    
+    const res = await fetch(`/api/works/${workId}`);
+    if (res.ok) {
+        const work = await res.json();
+        document.getElementById('reviewWorkTitle').textContent = work.title;
+        if (work.link && work.link !== '#') {
+            document.getElementById('reviewWorkLink').href = work.link;
+            document.getElementById('reviewWorkLink').textContent = 'Открыть работу';
+        } else {
+            document.getElementById('reviewWorkLink').href = '#';
+            document.getElementById('reviewWorkLink').textContent = 'Ссылка не указана';
+            document.getElementById('reviewWorkLink').style.color = 'gray';
+        }
+    } else {
+        document.getElementById('reviewWorkTitle').textContent = '❌ Ошибка загрузки';
+        document.getElementById('reviewWorkLink').textContent = 'Ошибка';
+    }
+    
+    document.getElementById('reviewModal').style.display = 'block';
+}
+
+document.getElementById('reviewCloseBtn').onclick = () => {
+    document.getElementById('reviewModal').style.display = 'none';
+    currentReviewWorkId = null;
+};
+
+document.getElementById('reviewSubmitBtn').onclick = async () => {
+    const comment = document.getElementById('reviewComment').value.trim();
+    if (!comment) {
+        document.getElementById('reviewError').textContent = 'Напишите комментарий';
+        return;
+    }
+    
+    const btn = document.getElementById('reviewSubmitBtn');
+    btn.disabled = true;
+    btn.textContent = 'Отправка...';
+    
+    const res = await fetch(`/api/reviews/${currentReviewWorkId}/submit`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ text_comment: comment })
+    });
+    
+    btn.disabled = false;
+    btn.textContent = 'Отправить проверку';
+    
+    if (res.ok) {
+        showNotification('Проверка отправлена!', 'success');
+        document.getElementById('reviewModal').style.display = 'none';
+        currentReviewWorkId = null;
+        loadQueueWorks();
+    } else {
+        const err = await res.json();
+        document.getElementById('reviewError').textContent = err.detail || 'Ошибка отправки';
+    }
+};
+
+async function loadResults(tab = 'my') {
+    const container = document.getElementById('resultsList');
+    container.innerHTML = '<p class="events-board__placeholder">Загрузка...</p>';
+    
+    const endpoint = tab === 'my' ? '/api/reviews/my' : '/api/reviews/for-me';
+    const res = await fetch(endpoint);
+    const reviews = await res.json();
+    
+    if (reviews.length === 0) {
+        container.innerHTML = `<p class="events-board__placeholder">${tab === 'my' ? 'Вы не проверили ни одной работы' : 'Нет проверок ваших работ'}</p>`;
+        return;
+    }
+    
+    container.innerHTML = reviews.map(r => `
+        <div style="border: 1px solid #D479F5; border-radius: 10px; padding: 20px; margin-bottom: 15px; background: white;">
+            <div style="font-weight: bold; font-size: 18px; color: #2B0738;">${r.work_title}</div>
+            ${tab === 'for-me' ? `<div style="color: #666; margin-top: 5px;"><span style="background: #F8E8FA; padding: 3px 10px; border-radius: 15px;">Проверил: ${r.reviewer_name}</span></div>` : ''}
+            <div style="margin-top: 10px; padding: 10px; background: #F8E8FA; border-radius: 5px;">
+                ${r.text_comment || 'Комментарий отсутствует'}
+            </div>
+            <div style="font-size: 12px; color: #999; margin-top: 10px;">
+                Проверено: ${new Date(r.completed_at).toLocaleDateString('ru-RU')}
+            </div>
+        </div>
+    `).join('');
+}
+
+document.getElementById('myReviewsTab').onclick = () => {
+    document.querySelectorAll('.tab-btn').forEach(b => {
+        b.classList.remove('active');
+        b.style.background = '#F8E8FA';
+        b.style.color = '#2B0738';
+        b.style.border = '2px solid #D479F5';
+    });
+    document.getElementById('myReviewsTab').style.background = '#D479F5';
+    document.getElementById('myReviewsTab').style.color = 'white';
+    document.getElementById('myReviewsTab').style.border = 'none';
+    loadResults('my');
+};
+
+document.getElementById('forMeTab').onclick = () => {
+    document.querySelectorAll('.tab-btn').forEach(b => {
+        b.classList.remove('active');
+        b.style.background = '#F8E8FA';
+        b.style.color = '#2B0738';
+        b.style.border = '2px solid #D479F5';
+    });
+    document.getElementById('forMeTab').style.background = '#D479F5';
+    document.getElementById('forMeTab').style.color = 'white';
+    document.getElementById('forMeTab').style.border = 'none';
+    loadResults('for-me');
 };
 
 async function loadEventsForSelect() {
@@ -451,6 +673,28 @@ document.getElementById('createEventForm').onsubmit = async (e) => {
     } else {
         const err = await res.json();
         showNotification(err.detail || 'Ошибка создания', 'error');
+    }
+};
+
+window.onclick = (e) => {
+    if (inviteModal && e.target === inviteModal) {
+        inviteModal.style.display = 'none';
+    }
+    if (participantsModal && e.target === participantsModal) {
+        participantsModal.style.display = 'none';
+    }
+    if (confirmModal && e.target === confirmModal) {
+        confirmModal.style.display = 'none';
+    }
+    if (confirmDeleteModal && e.target === confirmDeleteModal) {
+        confirmDeleteModal.style.display = 'none';
+    }
+    if (modal && e.target === modal) {
+        modal.style.display = 'none';
+    }
+    if (document.getElementById('reviewModal') && e.target === document.getElementById('reviewModal')) {
+        document.getElementById('reviewModal').style.display = 'none';
+        currentReviewWorkId = null;
     }
 };
 

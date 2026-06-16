@@ -303,3 +303,46 @@ def delete_event(event_id: int, request: Request):
     session.commit()
     
     return {"message": "Event deleted successfully"}
+
+
+@router.put("/{event_id}/participants/{user_id}/role")
+def change_participant_role(event_id: int, user_id: int, request: Request):
+    current_user_id = request.session.get("user_id")
+    if not current_user_id:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    session = get_session()
+    
+    event = session.query(Event).get(event_id)
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+    
+    current_participant = session.query(EventParticipant).filter_by(
+        event_id=event_id,
+        user_id=current_user_id,
+        role="organizer"
+    ).first()
+    
+    if not current_participant:
+        raise HTTPException(status_code=403, detail="Only organizer can change roles")
+    
+    if current_user_id == user_id:
+        raise HTTPException(status_code=400, detail="You cannot change your own role")
+    
+    participant = session.query(EventParticipant).filter_by(
+        event_id=event_id,
+        user_id=user_id
+    ).first()
+    
+    if not participant:
+        raise HTTPException(status_code=404, detail="Participant not found")
+    
+    # Переключаем роль
+    if participant.role == "reviewer":
+        participant.role = "performer"
+    else:
+        participant.role = "reviewer"
+    
+    session.commit()
+    
+    return {"message": "Role changed", "new_role": participant.role}

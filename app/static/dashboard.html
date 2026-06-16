@@ -61,13 +61,26 @@
 
             <div id="queuePanel" class="hidden">
                 <h1 class="dashboard__title">Очередь проверок</h1>
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 10px; font-weight: bold; color: #2B0738;">Выберите мероприятие:</label>
+                    <select id="queueEventSelect" style="padding: 10px; border: 1px solid #D479F5; border-radius: 5px; width: 100%; max-width: 400px;">
+                        <option value="">-- Загрузка... --</option>
+                    </select>
+                </div>
                 <div class="events-board" id="queueList">
                     <p class="events-board__placeholder">Выберите мероприятие</p>
                 </div>
+                <button type="button" class="dashboard__btn-create" id="nextWorkBtn" style="margin-top: 20px; background: #D479F5; border-color: #D479F5;">
+                    <span class="dashboard__btn-text" style="font-size: 24px;">Взять следующую работу</span>
+                </button>
             </div>
 
             <div id="resultsPanel" class="hidden">
                 <h1 class="dashboard__title">Результаты</h1>
+                <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                    <button id="myReviewsTab" class="tab-btn active" style="padding: 10px 20px; background: #D479F5; color: white; border: none; border-radius: 5px; cursor: pointer;">Мои проверки</button>
+                    <button id="forMeTab" class="tab-btn" style="padding: 10px 20px; background: #F8E8FA; color: #2B0738; border: 2px solid #D479F5; border-radius: 5px; cursor: pointer;">Проверки моих работ</button>
+                </div>
                 <div class="events-board" id="resultsList">
                     <p class="events-board__placeholder">Загрузка...</p>
                 </div>
@@ -135,6 +148,23 @@
             <div>
                 <button id="confirmDeleteYesBtn" style="background: #ff4444; color: white; border: none; padding: 10px 25px; border-radius: 5px; cursor: pointer;">Удалить</button>
                 <button id="confirmDeleteNoBtn" style="background: gray; color: white; border: none; padding: 10px 25px; border-radius: 5px; cursor: pointer; margin-left: 15px;">Отмена</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="reviewModal" class="modal">
+        <div class="modal-content" style="max-width: 550px;">
+            <h3>Проверка работы</h3>
+            <div id="reviewWorkInfo" style="margin-bottom: 15px;">
+                <p><strong>Название:</strong> <span id="reviewWorkTitle">Загрузка...</span></p>
+                <p><a href="#" id="reviewWorkLink" target="_blank">Открыть работу</a></p>
+            </div>
+            <label style="display: block; margin-bottom: 5px; font-weight: bold;">Комментарий:</label>
+            <textarea id="reviewComment" rows="5" style="width: 100%; padding: 8px; border: 1px solid #D479F5; border-radius: 5px;" placeholder="Напишите ваш отзыв..."></textarea>
+            <div id="reviewError" style="color: red; margin-top: 10px;"></div>
+            <div style="margin-top: 15px;">
+                <button id="reviewSubmitBtn" style="background: #D479F5; color: white; border: none; padding: 10px 25px; border-radius: 5px; cursor: pointer;">Отправить проверку</button>
+                <button id="reviewCloseBtn" style="background: gray; color: white; border: none; padding: 10px 25px; border-radius: 5px; cursor: pointer; margin-left: 10px;">Отмена</button>
             </div>
         </div>
     </div>
